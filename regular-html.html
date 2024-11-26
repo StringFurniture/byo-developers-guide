@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded test</title>
+    <style type="text/css">
+        html,
+        body,
+        iframe {
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <iframe
+        src="https://stringfurniture.com/buildyourown/index.html?system=1&lan=2&countrycode=[COUNTRY CODE HERE]&guid=[RESELLER GUID HERE]"
+        style="border: 0; width: 100%; height: 100%;"></iframe>
+
+    <script>
+        window.addEventListener('message', messageHandler, true);
+
+        /**
+         * Function to handle incoming messages from the BYO configurator
+         * 
+         * @param {Object} event - The event object
+         */
+        function messageHandler(event) {
+            // Trigger the handleLoad function when the BYO configurator is loaded
+            if (event.data.event == "byoLoaded") {
+                handleLoad(event)
+            }
+
+            // Trigger the addToCart function when the user adds an item to the cart in BYO
+            if (event.data.event == "cartUpdate") {
+                addToCart(event)
+            }
+
+            // Trigger the handleCart function when the cart is updated
+            if (event.data.event == "designUpdate") {
+                handleCart(event)
+            }
+        }
+
+        /**
+         * Function to handle the "byoLoaded" event
+         * 
+         * @param {Object} event - The event object
+         */
+        function handleLoad(event) {
+            // Enable the button in BYO
+            document.querySelector('iframe').contentWindow.postMessage({ event: "enableCart", data: {} }, "*")
+            console.log('handleLoad', event.data)
+        }
+
+        /**
+         * Function to handle the "cartUpdate" event
+         * 
+         * @param {Object} event - The event object
+         */
+        function addToCart(event) {
+            console.log('addToCart', event)
+
+            let designid = event.data.data.designid
+            let designname = event.data.data.name
+            let cart = event.data.data.items
+            // Add your code for handling adding items to your own cart
+        }
+
+        function handleCart(event) {
+            console.log('handleCart', event)
+
+            let designid = event.data.data.designid
+            let designname = event.data.data.name
+            let cart = event.data.data.items
+            // Add your code for handling updating the cart
+        }
+
+    </script>
+</body>
+
+</html>
