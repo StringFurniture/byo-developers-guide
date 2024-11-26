@@ -1,0 +1,119 @@
+<!--This should be placed in the theme.liquid file-->
+<div class="Rte">
+    <iframe
+        src="https://build-your-own.stringfurniture.com/?lan=2&countrycode=[COUNTRY CODE HERE]&guid=[RESELLER GUID HERE]"
+        id="byo" height="1000" width="1000" title="Iframe Example" style=" max-width: 100%; width: 100%;"></iframe>
+</div>
+</div>
+<!-- /End of the iframe -->
+
+<!--This is the script that should be placed in the theme.liquid file-->
+<script type="text/javascript">
+    // In order to get the product data from Shopify, we need to create an array of objects that contains the product id, name, sku, and ean
+    // We can utilize the Shopify Liquid syntax to loop through the products and variants and create this array
+    // Please make sure to replace 'string-furniture' with the handle of the collection that contains the products you want to display in the BYO configurator
+    const string_products = [
+        {% for product in collections['string-furniture'].products %}
+            {% for variant in product.variants %}
+            {
+                id: '{{ variant.id }}',
+                name: '{{ product.title }} {{ variant.title }}',
+                sku: '{{ variant.sku }}',
+                ean: '{{ variant.barcode }}',
+            },
+            {% endfor %}
+        {% endfor %}
+    ]
+
+    // Adding an event listener for 'message' events, using the messageHandler function
+    window.addEventListener('message', messageHandler, true)
+
+    // Function to handle incoming messages from the BYO configurator
+    function messageHandler(event) {
+        if (event.data.event == "byoLoaded") {
+            handleLoad(event)
+        }
+        if (event.data.event == "cartUpdate") {
+            addToCart(event)
+        }
+    }
+
+    // Function to handle the "byoLoaded" event
+    function handleLoad(event) {
+        document.querySelector('iframe#byo').contentWindow.postMessage({ event: "enableCart", data: {} }, "*")
+    }
+
+    // Function to handle the "cartUpdate" event
+    async function addToCart(event) {
+        let designid = event.data.data.designid
+        let designname = event.data.data.name
+        let cart = event.data.data.items
+
+        // Map the ean from the BYO configurator to the product id from Shopify
+        // This assumes that the ean from the BYO configurator matches the barcode of the product variant in Shopify
+        // Alternatively, you can use the sku to match the product variant
+        const products = cart.map(item => {
+            const product = string_products.find(product => product.ean === item.ean)
+
+            return {
+                id: product?.id ?? null,
+                quantity: item.quantity
+            }
+        }).filter(item => !!item.id)
+
+        // Add the products to the Shopify cart
+        const response = await fetch(window.Shopify.routes.root + 'cart/add.js', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                items: products,
+                sections: "cart-items,cart-icon-bubble,cart-live-region-text,cart-footer",
+                sections_url: "/cart"
+            })
+        })
+
+
+        if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
+        }
+
+        const cartData = await response.json()
+        console.log(cartData)
+        updateShopifyCart(cart)
+    }
+
+    async function updateShopifyCart() {
+        // These are the section IDs that need to be updated when the cart is updated
+        const headerId = 'sections--16164062658638__header'
+        const cartId = 'sections--16164062691406__cart-drawer'
+        const sectionIds = [headerId, cartId]
+
+        // Fetch the updated sections from Shopify
+        const response = await fetch(window.Shopify.routes.root + '?sections=' + sectionIds.join(','))
+
+        if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
+        }
+
+        let sectionData = await response.json();
+        sectionIds.forEach(sectionId => {
+            let sectionEl = document.getElementById("shopify-section-" + sectionId)
+            let innerHtml = new DOMParser()
+                .parseFromString(sectionData[sectionId], 'text/html')
+            let newEl = innerHtml.body.firstChild
+
+            console.log("SECTION DATA", newEl)
+            sectionEl.replaceWith(newEl)
+        })
+    }
+
+    function handleCart(event) {
+        let designid = event.data.data.designid
+        let designname = event.data.data.name
+        let cart = event.data.data.items
+
+    }
+</script>
+<!-- /End of the script -->
